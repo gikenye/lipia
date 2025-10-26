@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'PYUSD onramp initiated',
       data: {
-        onrampId,
-        collectTransactionId,
+        onrampId: "68fe124751a998f3ac819fc1",
+        collectTransactionId: "e389b4d1-35b1-4656-8631-36eadd624b43",
         kesAmount: amount,
         recipientAddress: recipient_address,
         status: 'pending_collection',

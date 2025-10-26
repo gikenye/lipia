@@ -27,7 +27,7 @@ export function InputField({
 }: InputFieldProps) {
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-black">{label}</label>
+      <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
       <div className="relative">
         <input
           type={type}
@@ -35,7 +35,7 @@ export function InputField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-4 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-lg"
         />
         {icon && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">{icon}</div>}
       </div>

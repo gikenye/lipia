@@ -56,10 +56,16 @@ export default function PaybillPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header title="MPESA Paybill" showBack />
+    <div className="min-h-screen bg-gray-50">
+      <Header title="Pay Bills" showBack />
 
-      <main className="px-4 py-6 pb-20">
+      <main className="max-w-md mx-auto px-4 py-6 pb-24">
+        {/* Context Section */}
+        <div className="bg-blue-50 rounded-xl p-4 mb-6">
+          <h2 className="font-semibold text-blue-900 mb-2">Pay your bills easily</h2>
+          <p className="text-blue-700 text-sm">Pay utilities, services, and other bills using your wallet balance</p>
+        </div>
+        
         <div className="space-y-6">
           <InputField
             label="Paybill number"
