@@ -11,16 +11,16 @@ import { validateAmount, calculateCUSD } from "@/lib/utils"
 
 const MIN_AMOUNT = 20
 const MAX_AMOUNT = 100000
-const EXCHANGE_RATE = 128.15
 
 export default function BuyGoodsPage() {
   const [tillNumber, setTillNumber] = useState("")
   const [amount, setAmount] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [walletBalance] = useState({ kes: 47.8, pyusd: 0.37 })
+  const [walletBalance, setWalletBalance] = useState({ kes: 0, pyusd: 0 })
+  const [exchangeRate, setExchangeRate] = useState(0)
 
   const amountNum = Number.parseFloat(amount) || 0
-  const pyusdAmount = calculateCUSD(amountNum, EXCHANGE_RATE)
+  const pyusdAmount = exchangeRate > 0 ? calculateCUSD(amountNum, exchangeRate) : 0
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -41,13 +41,36 @@ export default function BuyGoodsPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleContinue = () => {
-    if (validateForm()) {
-      console.log("Processing buy goods:", {
-        tillNumber,
-        amount: amountNum,
-        pyusd: pyusdAmount,
-      })
+  const handleContinue = async () => {
+    if (!validateForm()) return;
+    
+    try {
+      const response = await fetch('/api/v1/pyusd/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amountNum.toString(),
+          shortcode: tillNumber,
+          type: "BUY_GOODS",
+          mobile_network: "Safaricom",
+          callback_url: `${window.location.origin}/callback`
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`Payment processed! Transaction: ${result.data.data.transaction_code}`);
+      } else {
+        const error = result.error;
+        if (error?.message === "AMOUNT_MISMATCH") {
+          alert(`Amount mismatch! Expected: KES ${error.details.expected}, Provided: KES ${error.details.provided}`);
+        } else {
+          alert("Payment failed. Please try again.");
+        }
+      }
+    } catch (error) {
+      alert("Network error. Please try again.");
     }
   }
 
@@ -88,7 +111,7 @@ export default function BuyGoodsPage() {
           {/* Wallet Info */}
           <div className="flex items-center gap-2 text-sm">
             <span className="text-teal-600">ⓘ Wallet balance KES {walletBalance.kes}</span>
-            <span className="text-gray-600">1 PYUSD = KES {EXCHANGE_RATE}</span>
+            {exchangeRate > 0 && <span className="text-gray-600">1 PYUSD = KES {exchangeRate}</span>}
           </div>
 
           {/* Payment Summary */}
@@ -106,8 +129,8 @@ export default function BuyGoodsPage() {
           <WarningMessage message="Payment to wrong Till number is non-refundable." type="info" />
 
           {/* Continue Button */}
-          <Button onClick={handleContinue} fullWidth size="lg">
-            Continue
+          <Button onClick={handleContinue} fullWidth size="lg" className="bg-purple-600 hover:bg-purple-700 text-white py-4 text-lg font-semibold rounded-xl">
+            Pay Merchant
           </Button>
         </div>
       </main>

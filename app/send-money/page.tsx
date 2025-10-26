@@ -17,7 +17,6 @@ const PROVIDERS = [
 
 const MIN_AMOUNT = 100
 const MAX_AMOUNT = 100000
-const EXCHANGE_RATE = 128.15
 
 export default function SendMoneyPage() {
   const [selectedProvider, setSelectedProvider] = useState("mpesa")
@@ -27,10 +26,11 @@ export default function SendMoneyPage() {
   const [isVerified, setIsVerified] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
   const [validatedName, setValidatedName] = useState("")
-  const [walletBalance] = useState({ kes: 47.8, pyusd: 0.37 })
+  const [walletBalance, setWalletBalance] = useState({ kes: 0, pyusd: 0 })
+  const [exchangeRate, setExchangeRate] = useState(0)
 
   const amountNum = Number.parseFloat(amount) || 0
-  const pyusdAmount = calculateCUSD(amountNum, EXCHANGE_RATE)
+  const pyusdAmount = exchangeRate > 0 ? calculateCUSD(amountNum, exchangeRate) : 0
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -185,7 +185,7 @@ export default function SendMoneyPage() {
           {/* Wallet Info */}
           <div className="flex items-center gap-2 text-sm">
             <span className="text-teal-600">ⓘ Wallet balance KES {walletBalance.kes}</span>
-            <span className="text-gray-600">1 PYUSD = KES {EXCHANGE_RATE}</span>
+            {exchangeRate > 0 && <span className="text-gray-600">1 PYUSD = KES {exchangeRate}</span>}
           </div>
 
           {/* Payment Summary */}

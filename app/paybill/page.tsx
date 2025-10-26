@@ -11,17 +11,17 @@ import { validateAmount, calculateCUSD } from "@/lib/utils"
 
 const MIN_AMOUNT = 20
 const MAX_AMOUNT = 100000
-const EXCHANGE_RATE = 128.15
 
 export default function PaybillPage() {
   const [paybillNumber, setPaybillNumber] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [amount, setAmount] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [walletBalance] = useState({ kes: 47.8, pyusd: 0.37 })
+  const [walletBalance, setWalletBalance] = useState({ kes: 0, pyusd: 0 })
+  const [exchangeRate, setExchangeRate] = useState(0)
 
   const amountNum = Number.parseFloat(amount) || 0
-  const pyusdAmount = calculateCUSD(amountNum, EXCHANGE_RATE)
+  const pyusdAmount = exchangeRate > 0 ? calculateCUSD(amountNum, exchangeRate) : 0
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -44,14 +44,31 @@ export default function PaybillPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleContinue = () => {
-    if (validateForm()) {
-      console.log("Processing paybill:", {
-        paybillNumber,
-        accountNumber,
-        amount: amountNum,
-        pyusd: pyusdAmount,
-      })
+  const handleContinue = async () => {
+    if (!validateForm()) return;
+    
+    try {
+      const response = await fetch('/api/v1/pyusd/pay/paybill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transaction_hash: "0x" + Date.now().toString(16),
+          shortcode: paybillNumber,
+          account_number: accountNumber,
+          mobile_network: "Safaricom",
+          recipient_phone: "0758515833"
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`Paybill processed! Transaction: ${result.data.data.transaction_code}`);
+      } else {
+        alert("Paybill failed. Please try again.");
+      }
+    } catch (error) {
+      alert("Network error. Please try again.");
     }
   }
 
@@ -100,7 +117,7 @@ export default function PaybillPage() {
 
           <div className="flex items-center gap-2 text-sm">
             <span className="text-teal-600">ⓘ Wallet balance KES {walletBalance.kes}</span>
-            <span className="text-gray-600">1 PYUSD = KES {EXCHANGE_RATE}</span>
+            {exchangeRate > 0 && <span className="text-gray-600">1 PYUSD = KES {exchangeRate}</span>}
           </div>
 
           <div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -113,8 +130,8 @@ export default function PaybillPage() {
             </div>
           </div>
 
-          <Button onClick={handleContinue} fullWidth size="lg" className="bg-green-500 hover:bg-green-600 text-white">
-            Continue
+          <Button onClick={handleContinue} fullWidth size="lg" className="bg-blue-600 hover:bg-blue-700 text-white py-4 text-lg font-semibold rounded-xl">
+            Pay Bill
           </Button>
 
           <WarningMessage message="Payment to wrong Paybill number is non-refundable." type="info" />

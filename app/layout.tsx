@@ -1,5 +1,6 @@
 import type React from "react"
 import { Inter } from "next/font/google"
+import { WalletProvider } from "@/lib/wallet-context"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -18,7 +19,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
-        <div className="min-h-screen">{children}</div>
+        <WalletProvider>
+          <div className="min-h-screen">{children}</div>
+        </WalletProvider>
       </body>
     </html>
   )
