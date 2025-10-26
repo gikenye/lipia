@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Send,
@@ -16,34 +16,62 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useWallet } from "@/lib/wallet-context";
+import { useWalletBalance } from "thirdweb/react";
+import { client } from "@/lib/thirdweb";
+import { arbitrum } from "thirdweb/chains";
+
+// Force dynamic rendering to avoid SSG issues
+export const dynamic = "force-dynamic";
+
+const PYUSD_ADDRESS = "0x46850aD61C2B7d64d08c9C754F45254596696984";
 
 export default function Dashboard() {
-  const [walletBalance] = useState({
-    kes: 48,
-    pyusd: 0.37,
+  const { account } = useWallet();
+
+  // Only fetch balances if account is connected
+  const {
+    data: pyusdBalance,
+    isLoading: pyusdLoading,
+    error: pyusdError,
+  } = useWalletBalance({
+    chain: arbitrum,
+    address: account?.address,
+    client,
+    tokenAddress: PYUSD_ADDRESS,
   });
+
+  const {
+    data: ethBalance,
+    isLoading: ethLoading,
+    error: ethError,
+  } = useWalletBalance({
+    chain: arbitrum,
+    address: account?.address,
+    client,
+  });
+
+  const [exchangeRate, setExchangeRate] = useState(0);
+  const pyusdAmount = parseFloat(pyusdBalance?.displayValue || "0");
+  const kesAmount = exchangeRate > 0 ? pyusdAmount * exchangeRate : 0;
 
   const [isExpanded, setIsExpanded] = useState(true);
   const [currencyMode, setCurrencyMode] = useState<"KES" | "USD">("KES");
 
   const tokenBalances = [
     {
-      symbol: "cUSD",
-      amount: 0.37,
+      symbol: "PYUSD",
+      amount: pyusdAmount,
       icon: "💵",
       color: "bg-green-100",
+      loading: pyusdLoading,
     },
     {
-      symbol: "USDT",
-      amount: 0.01,
-      icon: "🟢",
+      symbol: "ETH",
+      amount: parseFloat(ethBalance?.displayValue || "0"),
+      icon: "⚡",
       color: "bg-blue-100",
-    },
-    {
-      symbol: "USDC",
-      amount: 0.01,
-      icon: "🔵",
-      color: "bg-blue-100",
+      loading: ethLoading,
     },
   ];
 
@@ -60,6 +88,12 @@ export default function Dashboard() {
       title: "Add Money",
       icon: Plus,
       href: "/top-up",
+    },
+    {
+      id: "offramp",
+      title: "Cash Out",
+      icon: ArrowDown,
+      href: "/offramp",
     },
     {
       id: "buy-goods",
@@ -105,7 +139,11 @@ export default function Dashboard() {
                 <p className="text-white/80 text-sm font-medium">Total</p>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-3xl font-bold">
-                    Ksh{walletBalance.kes}
+                    {!account
+                      ? "0"
+                      : pyusdLoading
+                        ? "Loading..."
+                        : `Ksh${kesAmount.toFixed(0)}`}
                   </span>
                 </div>
               </div>
@@ -151,7 +189,7 @@ export default function Dashboard() {
             {isExpanded && (
               <div className="space-y-3 mb-4">
                 <div className="grid grid-cols-2 gap-3">
-                  {tokenBalances.slice(0, 2).map((token, index) => (
+                  {tokenBalances.map((token, index) => (
                     <div
                       key={token.symbol}
                       className="bg-white rounded-2xl p-4"
@@ -163,9 +201,11 @@ export default function Dashboard() {
                       </div>
                       <div className="text-gray-900">
                         <p className="text-lg font-bold">
-                          {token.amount < 0.01
-                            ? "<0.01"
-                            : token.amount.toFixed(2)}
+                          {token.loading
+                            ? "..."
+                            : token.amount < 0.01
+                              ? "<0.01"
+                              : token.amount.toFixed(4)}
                         </p>
                         <p className="text-sm text-gray-500">{token.symbol}</p>
                       </div>
@@ -173,28 +213,11 @@ export default function Dashboard() {
                   ))}
                 </div>
 
-                {/* Third token card (full width) */}
-                <div className="bg-white rounded-2xl p-4 w-1/2">
-                  <div
-                    className={`w-8 h-8 ${tokenBalances[2].color} rounded-full flex items-center justify-center mb-2`}
-                  >
-                    <span className="text-sm">{tokenBalances[2].icon}</span>
-                  </div>
-                  <div className="text-gray-900">
-                    <p className="text-lg font-bold">
-                      {tokenBalances[2].amount < 0.01
-                        ? "<0.01"
-                        : tokenBalances[2].amount.toFixed(2)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {tokenBalances[2].symbol}
-                    </p>
-                  </div>
-                </div>
-
                 {/* Disclaimer */}
                 <p className="text-center text-white/70 text-sm mt-4">
-                  KES amounts are approximates
+                  {account
+                    ? "Live blockchain data"
+                    : "Connect wallet to see balances"}
                 </p>
               </div>
             )}
@@ -220,7 +243,7 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Quick Actions
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {services.map((service) => {
               const Icon = service.icon;
               return (
@@ -253,8 +276,19 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h3 className="font-semibold text-gray-900 mb-3">Recent Activity</h3>
           <div className="text-center py-8 text-gray-500">
-            <p className="text-sm">No recent transactions</p>
-            <p className="text-xs mt-1">Your activity will appear here</p>
+            {account ? (
+              <>
+                <p className="text-sm">No recent transactions</p>
+                <p className="text-xs mt-1">Your activity will appear here</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm">Connect your wallet</p>
+                <p className="text-xs mt-1">
+                  Sign in to see your transaction history
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

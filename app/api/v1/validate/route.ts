@@ -1,28 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { type, shortcode, mobile_network } = body;
 
-    // Mock validation - replace with actual API call
-    const mockResponse = {
-      success: true,
-      message: "Validation completed",
-      data: {
-        code: 200,
-        message: "Validation results",
-        data: {
-          status: "COMPLETE",
-          shortcode: shortcode,
-          public_name: "JOHNSTONE GIKENYE NJUGUNA",
-          mobile_network: mobile_network || "Safaricom"
-        }
-      },
-      timestamp: new Date().toISOString()
-    };
+    // TODO: Implement actual validation logic
+    // 1. Validate phone number format and mobile network
+    // 2. For M-Pesa: Validate shortcode against Safaricom API
+    // 3. For Paybills: Verify paybill number and get business name
+    // 4. Return validation results with actual user/business details
 
-    return NextResponse.json(mockResponse);
+    // TODO: Replace with actual validation API integration
+    return NextResponse.json(
+      { success: false, message: "Validation endpoint not implemented" },
+      { status: 501 }
+    );
   } catch (error) {
     return NextResponse.json(
       { success: false, message: "Validation failed" },

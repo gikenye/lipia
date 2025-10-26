@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { connectWithGoogle } from "@/lib/thirdweb";
+import { useWallet } from "@/lib/wallet-context";
 
 export function GoogleSignIn() {
   const [isConnecting, setIsConnecting] = useState(false);
-  const [account, setAccount] = useState<any>(null);
+  const { account, setAccount } = useWallet();
   const router = useRouter();
 
   const handleConnect = async () => {
