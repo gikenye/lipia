@@ -1,14 +1,13 @@
 import type React from "react"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Inter } from "next/font/google"
 import "./globals.css"
 
-const geistSans = Geist({ subsets: ["latin"] })
-const geistMono = Geist_Mono({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Fintech App",
-  description: "Mobile-first fintech application",
-    generator: 'v0.app'
+  title: "Lipia - Send Money to Kenya",
+  description: "Fast, secure money transfers to Kenya using PYUSD",
+  generator: 'v0.app'
 }
 
 export default function RootLayout({
@@ -18,8 +17,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.className} antialiased`}>
-        <div className="min-h-screen bg-(--color-background)">{children}</div>
+      <body className={`${inter.className} antialiased`}>
+        <div className="min-h-screen">{children}</div>
       </body>
     </html>
   )

@@ -52,14 +52,20 @@ export default function BuyGoodsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--color-background)">
-      <Header title="MPESA Buy Goods" showBack />
+    <div className="min-h-screen bg-gray-50">
+      <Header title="Pay Merchant" showBack />
 
-      <main className="px-4 py-6 pb-20">
+      <main className="max-w-md mx-auto px-4 py-6 pb-24">
+        {/* Context Section */}
+        <div className="bg-purple-50 rounded-xl p-4 mb-6">
+          <h2 className="font-semibold text-purple-900 mb-2">Pay at stores and shops</h2>
+          <p className="text-purple-700 text-sm">Use the merchant's till number to pay for goods and services</p>
+        </div>
+        
         <div className="space-y-6">
           {/* Till Number */}
           <InputField
-            label="Till / Buy Goods"
+            label="Merchant Till Number"
             value={tillNumber}
             onChange={setTillNumber}
             placeholder="4029669"
@@ -86,7 +92,7 @@ export default function BuyGoodsPage() {
           </div>
 
           {/* Payment Summary */}
-          <div className="bg-(--color-surface) rounded-lg p-4 border border-(--color-border)">
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-gray-600">You will pay (PYUSD)</span>
               <div className="flex items-center gap-2">
