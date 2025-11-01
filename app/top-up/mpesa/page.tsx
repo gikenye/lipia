@@ -6,8 +6,10 @@ import { Header } from "@/components/header";
 import { InputField } from "@/components/input-field";
 import { Button } from "@/components/button";
 import { validatePhoneNumber } from "@/lib/utils";
+import { useWallet } from "@/lib/wallet-context";
 
 export default function MpesaTopUpPage() {
+  const { account } = useWallet();
   const [mobileNumber, setMobileNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [exchangeRate, setExchangeRate] = useState(129.2);
@@ -64,13 +66,19 @@ export default function MpesaTopUpPage() {
   const handleTopUp = async () => {
     if (!validateForm()) return;
 
+    // Validate wallet connection
+    if (!account) {
+      setErrors((prev) => ({
+        ...prev,
+        wallet: "Please connect your wallet first",
+      }));
+      return;
+    }
+
     setIsLoading(true);
     setTopUpStatus("processing");
 
     try {
-      // TODO: Get actual recipient address from wallet context
-      const recipientAddress = "0xaB12E94861B69ff2696b8365f6a0c992A38da2c8";
-
       const response = await fetch("/api/v1/pyusd/onramp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,7 +86,7 @@ export default function MpesaTopUpPage() {
           shortcode: mobileNumber,
           amount: amountNum,
           mobile_network: "Safaricom",
-          recipient_address: recipientAddress,
+          recipient_address: account,
           callback_url: `${window.location.origin}/api/v1/status`,
         }),
       });

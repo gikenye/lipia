@@ -68,6 +68,7 @@ export default function PaybillPage() {
           account_number: accountNumber,
           mobile_network: "Safaricom",
           recipient_phone: "0758515833", // TODO: Get from user input or context
+          amount: amountNum,
         }),
       });
 

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Configuration for external ramps API
 const RAMPS_BASE_URL = process.env.RAMPS_BASE_URL || "http://localhost:3000";
-const RAMPS_API_KEY = process.env.RAMPS_API_KEY || "your_server_api_key_here";
+const RAMPS_API_KEY = process.env.RAMPS_API_KEY;
+
+if (!RAMPS_API_KEY) {
+  throw new Error("RAMPS_API_KEY environment variable is required");
+}
 
 interface OnrampRequest {
   shortcode: string;
@@ -14,6 +18,16 @@ interface OnrampRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate required environment variables
+    if (!RAMPS_API_KEY) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Server configuration error: API key not found",
+        },
+        { status: 500 }
+      );
+    }
     const body: OnrampRequest = await request.json();
 
     // Validate required fields
@@ -52,6 +66,7 @@ export async function POST(request: NextRequest) {
         recipient_address: recipient_address,
         callback_url: callback_url,
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {

@@ -37,6 +37,18 @@ export default function SendMoneyPage() {
   const pyusdAmount =
     exchangeRate > 0 ? calculateCUSD(amountNum, exchangeRate) : 0;
 
+  // Map selectedProvider to mobile network name
+  const getMobileNetwork = (provider: string): string => {
+    switch (provider) {
+      case "mpesa":
+        return "Safaricom";
+      case "airtel":
+        return "Airtel";
+      default:
+        return "Safaricom"; // Safe fallback
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -69,7 +81,7 @@ export default function SendMoneyPage() {
         body: JSON.stringify({
           type: "MOBILE",
           shortcode: phoneNumber,
-          mobile_network: "Safaricom",
+          mobile_network: getMobileNetwork(selectedProvider),
         }),
       });
 

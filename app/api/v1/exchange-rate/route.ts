@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Configuration for external ramps API
 const RAMPS_BASE_URL = process.env.RAMPS_BASE_URL || "http://localhost:3000";
-const RAMPS_API_KEY = process.env.RAMPS_API_KEY || "your_server_api_key_here";
+const RAMPS_API_KEY = process.env.RAMPS_API_KEY || "";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         currency_code: currency_code,
       }),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {

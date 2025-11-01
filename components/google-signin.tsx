@@ -40,10 +40,12 @@ export function GoogleSignIn() {
                     "eth_signTypedData_v4",
                   ],
                   events: ["chainChanged", "accountsChanged"],
-                  accounts: [
-                    "eip155:1:0x0000000000000000000000000000000000000000",
-                    "eip155:42161:0x0000000000000000000000000000000000000000",
-                  ],
+                  accounts: account
+                    ? [`eip155:1:${account}`, `eip155:42161:${account}`]
+                    : [
+                        "eip155:1:0x0000000000000000000000000000000000000000",
+                        "eip155:42161:0x0000000000000000000000000000000000000000",
+                      ],
                 },
               },
             });
