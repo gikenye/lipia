@@ -57,7 +57,7 @@ export default function TopUpPage() {
           
           {/* Connected Wallet */}
           {activeAccount && (
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="bg-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center">
@@ -72,7 +72,8 @@ export default function TopUpPage() {
                 </div>
                 <button
                   onClick={handleCopyAddress}
-                  className="bg-gray-100 hover:bg-gray-200 rounded-lg p-2 transition-colors"
+                  className="bg-gray-100 hover:bg-gray-200 rounded-lg p-2 transition-colors flex items-center justify-center"
+                  title="Copy wallet address"
                 >
                   {copied ? (
                     <Check className="w-5 h-5 text-green-600" />

@@ -1,26 +1,63 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
-import { Account } from "thirdweb/wallets";
-import { ThirdwebProvider } from "thirdweb/react";
-import { client } from "@/lib/thirdweb";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
+import type { SessionTypes } from "@walletconnect/types";
+import {
+  initializeWalletKit,
+  getWalletKit,
+  getAccountFromSession,
+} from "@/lib/walletconnect";
 
 interface WalletContextType {
-  account: Account | null;
-  setAccount: (account: Account | null) => void;
+  account: string | null;
+  session: SessionTypes.Struct | null;
+  setSession: (session: SessionTypes.Struct | null) => void;
+  isInitializing: boolean;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const [account, setAccount] = useState<Account | null>(null);
+  const [account, setAccount] = useState<string | null>(null);
+  const [session, setSession] = useState<SessionTypes.Struct | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  useEffect(() => {
+    const initWallet = async () => {
+      try {
+        await initializeWalletKit();
+        setIsInitializing(false);
+      } catch (error) {
+        console.error("Failed to initialize WalletKit:", error);
+        setIsInitializing(false);
+      }
+    };
+
+    initWallet();
+  }, []);
+
+  const handleSetSession = (newSession: SessionTypes.Struct | null) => {
+    setSession(newSession);
+    if (newSession) {
+      const accountAddress = getAccountFromSession(newSession);
+      setAccount(accountAddress);
+    } else {
+      setAccount(null);
+    }
+  };
 
   return (
-    <ThirdwebProvider>
-      <WalletContext.Provider value={{ account, setAccount }}>
-        {children}
-      </WalletContext.Provider>
-    </ThirdwebProvider>
+    <WalletContext.Provider
+      value={{ account, session, setSession: handleSetSession, isInitializing }}
+    >
+      {children}
+    </WalletContext.Provider>
   );
 }
 

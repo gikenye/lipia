@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Configuration for external ramps API
+const RAMPS_BASE_URL = process.env.RAMPS_BASE_URL || "http://localhost:3000";
+const RAMPS_API_KEY = process.env.RAMPS_API_KEY || "your_server_api_key_here";
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -12,19 +16,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implement actual transaction verification
-    // 1. Query blockchain for transaction details using txHash
-    // 2. Verify transaction is confirmed and valid
-    // 3. Extract amount, from/to addresses, block number
-    // 4. Store verified transaction in database
-    // 5. Return verification status and transaction data
+    // Call external ramps API for PYUSD transaction verification
+    const response = await fetch(`${RAMPS_BASE_URL}/api/v1/pyusd/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": RAMPS_API_KEY,
+      },
+      body: JSON.stringify({
+        txHash: txHash,
+      }),
+    });
 
-    // TODO: Replace with actual blockchain verification
-    return NextResponse.json(
-      { success: false, message: "Verification endpoint not implemented" },
-      { status: 501 }
-    );
+    if (!response.ok) {
+      throw new Error(`Ramps API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Return the result from ramps API
+    return NextResponse.json(result);
   } catch (error) {
+    console.error("Verification API error:", error);
     return NextResponse.json(
       { success: false, message: "Transaction verification failed" },
       { status: 500 }

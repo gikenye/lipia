@@ -1,23 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Configuration for external ramps API
+const RAMPS_BASE_URL = process.env.RAMPS_BASE_URL || "http://localhost:3000";
+const RAMPS_API_KEY = process.env.RAMPS_API_KEY || "your_server_api_key_here";
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { currency_code } = body;
 
-    // TODO: Implement actual exchange rate fetching
-    // 1. Validate currency_code parameter
-    // 2. Fetch current USD/KES exchange rate from reliable source
-    // 3. Calculate buying/selling rates with appropriate spreads
-    // 4. Cache rates for performance
-    // 5. Return current exchange rates
+    // Validate currency code
+    if (!currency_code) {
+      return NextResponse.json(
+        { success: false, message: "Currency code is required" },
+        { status: 400 }
+      );
+    }
 
-    // TODO: Replace with actual exchange rate API integration
-    return NextResponse.json(
-      { success: false, message: "Exchange rate endpoint not implemented" },
-      { status: 501 }
-    );
+    // Call external ramps API for exchange rate
+    const response = await fetch(`${RAMPS_BASE_URL}/api/v1/exchange-rate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": RAMPS_API_KEY,
+      },
+      body: JSON.stringify({
+        currency_code: currency_code,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ramps API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Return the result from ramps API
+    return NextResponse.json(result);
   } catch (error) {
+    console.error("Exchange rate API error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to get exchange rate" },
       { status: 500 }
