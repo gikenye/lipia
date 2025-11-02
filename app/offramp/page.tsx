@@ -94,7 +94,7 @@ export default function OfframpPage() {
             label="M-Pesa Number"
             value={recipientPhone}
             onChange={setRecipientPhone}
-            placeholder="0758515833"
+            placeholder="07xxxxxxxx"
             type="tel"
             icon={<Copy className="w-5 h-5" />}
           />

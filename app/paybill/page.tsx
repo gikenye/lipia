@@ -16,6 +16,7 @@ export default function PaybillPage() {
   const [paybillNumber, setPaybillNumber] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [walletBalance, setWalletBalance] = useState({ kes: 0, pyusd: 0 });
   const [exchangeRate, setExchangeRate] = useState(0);
@@ -45,6 +46,14 @@ export default function PaybillPage() {
       newErrors.amount = `Amount must be between ${MIN_AMOUNT} and ${MAX_AMOUNT}`;
     }
 
+    if (!phoneNumber) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (
+      !/^(\+254|254|0)?[17]\d{8}$/.test(phoneNumber.replace(/\s/g, ""))
+    ) {
+      newErrors.phoneNumber = "Please enter a valid Kenyan phone number";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -67,8 +76,8 @@ export default function PaybillPage() {
           shortcode: paybillNumber,
           account_number: accountNumber,
           mobile_network: "Safaricom",
-          recipient_phone: "0758515833", // TODO: Get from user input or context
           amount: amountNum,
+          recipient_phone: phoneNumber,
         }),
       });
 
@@ -134,6 +143,17 @@ export default function PaybillPage() {
             icon={<Copy className="w-5 h-5" />}
             error={errors.amount}
             hint="Amount (min 20 - max 100,000)"
+          />
+
+          <InputField
+            label="Phone number"
+            value={phoneNumber}
+            onChange={setPhoneNumber}
+            placeholder="0712345678"
+            type="tel"
+            icon={<Shield className="w-5 h-5" />}
+            error={errors.phoneNumber}
+            hint="Enter your Safaricom phone number"
           />
 
           <div className="flex items-center gap-2 text-sm">
