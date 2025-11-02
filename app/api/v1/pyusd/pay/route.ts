@@ -1,11 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Configuration for external ramps API
-const RAMPS_BASE_URL = process.env.RAMPS_BASE_URL || "http://localhost:3000";
-const RAMPS_API_KEY = process.env.RAMPS_API_KEY || "your_server_api_key_here";
+const RAMPS_BASE_URL = process.env.RAMPS_BASE_URL;
+const RAMPS_API_KEY = process.env.RAMPS_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate required environment variables
+    if (!RAMPS_BASE_URL) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Server configuration error: RAMPS_BASE_URL not found",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!RAMPS_API_KEY) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Server configuration error: RAMPS_API_KEY not found",
+        },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const {
       transaction_hash,

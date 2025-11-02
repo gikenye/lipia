@@ -25,7 +25,32 @@ export function GoogleSignIn() {
           try {
             const { id, params } = proposal;
 
-            // Build approved namespaces
+            // Validate that we have a real wallet address
+            if (
+              !account ||
+              account === "0x0000000000000000000000000000000000000000"
+            ) {
+              console.error(
+                "No valid wallet address available for session approval"
+              );
+              await walletKit.rejectSession({
+                id: proposal.id,
+                reason: getSdkError("USER_REJECTED"),
+              });
+              return;
+            }
+
+            // Validate address format
+            if (!account.startsWith("0x") || account.length !== 42) {
+              console.error("Invalid wallet address format:", account);
+              await walletKit.rejectSession({
+                id: proposal.id,
+                reason: getSdkError("USER_REJECTED"),
+              });
+              return;
+            }
+
+            // Build approved namespaces with real wallet addresses
             const approvedNamespaces = buildApprovedNamespaces({
               proposal: params,
               supportedNamespaces: {
@@ -40,12 +65,7 @@ export function GoogleSignIn() {
                     "eth_signTypedData_v4",
                   ],
                   events: ["chainChanged", "accountsChanged"],
-                  accounts: account
-                    ? [`eip155:1:${account}`, `eip155:42161:${account}`]
-                    : [
-                        "eip155:1:0x0000000000000000000000000000000000000000",
-                        "eip155:42161:0x0000000000000000000000000000000000000000",
-                      ],
+                  accounts: [`eip155:1:${account}`, `eip155:42161:${account}`],
                 },
               },
             });
