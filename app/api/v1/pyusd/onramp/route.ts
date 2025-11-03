@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Configuration for external ramps API
+const RAMPS_BASE_URL = process.env.RAMPS_BASE_URL || "http://localhost:3000";
+const RAMPS_API_KEY = process.env.RAMPS_API_KEY;
+
+if (!RAMPS_API_KEY) {
+  throw new Error("RAMPS_API_KEY environment variable is required");
+}
+
 interface OnrampRequest {
   shortcode: string;
   amount: number;
@@ -10,6 +18,16 @@ interface OnrampRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate required environment variables
+    if (!RAMPS_API_KEY) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Server configuration error: API key not found",
+        },
+        { status: 500 }
+      );
+    }
     const body: OnrampRequest = await request.json();
 
     // Validate required fields
@@ -34,18 +52,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implement actual onramp logic
-    // 1. Validate wallet address
-    // 2. Create transaction record in database
-    // 3. Initiate M-Pesa collection request
-    // 4. Return transaction ID for status tracking
+    // Call external ramps API for KES onramp
+    const response = await fetch(`${RAMPS_BASE_URL}/api/v1/pyusd/onramp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": RAMPS_API_KEY,
+      },
+      body: JSON.stringify({
+        shortcode: shortcode,
+        amount: amount,
+        mobile_network: mobile_network,
+        recipient_address: recipient_address,
+        callback_url: callback_url,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
 
-    // TODO: Replace with actual implementation
-    return NextResponse.json(
-      { success: false, message: "Onramp endpoint not implemented" },
-      { status: 501 }
-    );
+    if (!response.ok) {
+      throw new Error(`Ramps API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Return the result from ramps API
+    return NextResponse.json(result);
   } catch (error) {
+    console.error("Onramp API error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

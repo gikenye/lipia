@@ -6,13 +6,18 @@ import { Header } from "@/components/header";
 import { InputField } from "@/components/input-field";
 import { Button } from "@/components/button";
 import { validatePhoneNumber } from "@/lib/utils";
+import { useWallet } from "@/lib/wallet-context";
 
 export default function MpesaTopUpPage() {
+  const { account } = useWallet();
   const [mobileNumber, setMobileNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [exchangeRate, setExchangeRate] = useState(129.2);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [topUpStatus, setTopUpStatus] = useState<
+    "idle" | "processing" | "success" | "error"
+  >("idle");
 
   const amountNum = Number.parseFloat(amount) || 0;
   const pyusdAmount = amountNum / exchangeRate;
@@ -23,29 +28,29 @@ export default function MpesaTopUpPage() {
 
   const fetchExchangeRate = async () => {
     try {
-      const response = await fetch('/api/v1/exchange-rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currency_code: 'KES' })
+      const response = await fetch("/api/v1/exchange-rate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currency_code: "KES" }),
       });
       const result = await response.json();
       if (result.success) {
         setExchangeRate(result.data.data.quoted_rate);
       }
     } catch (error) {
-      console.error('Failed to fetch exchange rate');
+      console.error("Failed to fetch exchange rate");
     }
   };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!mobileNumber) {
       newErrors.mobileNumber = "Mobile number is required";
     } else if (!validatePhoneNumber(mobileNumber)) {
       newErrors.mobileNumber = "Invalid phone number format";
     }
-    
+
     if (!amount) {
       newErrors.amount = "Amount is required";
     } else if (amountNum < 100) {
@@ -53,36 +58,55 @@ export default function MpesaTopUpPage() {
     } else if (amountNum > 100000) {
       newErrors.amount = "Maximum amount is KES 100,000";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleTopUp = async () => {
     if (!validateForm()) return;
-    
+
+    // Validate wallet connection
+    if (!account) {
+      setErrors((prev) => ({
+        ...prev,
+        wallet: "Please connect your wallet first",
+      }));
+      return;
+    }
+
     setIsLoading(true);
+    setTopUpStatus("processing");
+
     try {
-      const response = await fetch('/api/v1/pyusd/onramp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/v1/pyusd/onramp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shortcode: mobileNumber,
           amount: amountNum,
           mobile_network: "Safaricom",
-          recipient_address: "0xaB12E94861B69ff2696b8365f6a0c992A38da2c8",
-          callback_url: `${window.location.origin}/callback`
-        })
+          recipient_address: account,
+          callback_url: `${window.location.origin}/api/v1/status`,
+        }),
       });
-      
+
       const result = await response.json();
+
       if (result.success) {
-        alert(`Top-up initiated! Transaction ID: ${result.data.collectTransactionId}`);
+        setTopUpStatus("success");
+        setErrors({});
+        console.log("Top-up initiated successfully:", result);
       } else {
-        setErrors({ general: "Top-up failed. Please try again." });
+        setTopUpStatus("error");
+        setErrors({
+          general: result.message || "Top-up failed. Please try again.",
+        });
       }
     } catch (error) {
+      setTopUpStatus("error");
       setErrors({ general: "Network error. Please try again." });
+      console.error("Top-up error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -91,13 +115,17 @@ export default function MpesaTopUpPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header title="M-Pesa Top Up" showBack />
-      
+
       <main className="max-w-md mx-auto px-4 py-6">
         <div className="bg-green-50 rounded-xl p-4 mb-6">
-          <h2 className="font-semibold text-green-900 mb-2">Add money via M-Pesa</h2>
-          <p className="text-green-700 text-sm">Send money from your M-Pesa to get PYUSD</p>
+          <h2 className="font-semibold text-green-900 mb-2">
+            Add money via M-Pesa
+          </h2>
+          <p className="text-green-700 text-sm">
+            Send money from your M-Pesa to get PYUSD
+          </p>
         </div>
-        
+
         <div className="space-y-6">
           <InputField
             label="M-Pesa Number"
@@ -108,7 +136,7 @@ export default function MpesaTopUpPage() {
             icon={<Copy className="w-5 h-5" />}
             error={errors.mobileNumber}
           />
-          
+
           <InputField
             label="Amount (KES)"
             value={amount}
@@ -118,37 +146,65 @@ export default function MpesaTopUpPage() {
             error={errors.amount}
             hint="Min: KES 100, Max: KES 100,000"
           />
-          
+
           <div className="bg-white rounded-xl p-4 border border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-3">You will receive</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">
+              You will receive
+            </h3>
             <div className="flex items-center justify-between">
               <span className="text-gray-600">PYUSD Amount</span>
               <div className="flex items-center gap-2">
-                <img src="https://www.paypalobjects.com/devdoc/coin-PYUSD.svg" alt="PYUSD" className="w-5 h-5" />
-                <span className="font-bold text-lg">{pyusdAmount.toFixed(4)} PYUSD</span>
+                <img
+                  src="https://www.paypalobjects.com/devdoc/coin-PYUSD.svg"
+                  alt="PYUSD"
+                  className="w-5 h-5"
+                />
+                <span className="font-bold text-lg">
+                  {pyusdAmount.toFixed(4)} PYUSD
+                </span>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Rate: 1 PYUSD = KES {exchangeRate}</p>
+            <p className="text-xs text-gray-500 mt-2">
+              Rate: 1 PYUSD = KES {exchangeRate}
+            </p>
           </div>
-          
+
           {errors.general && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-red-700 text-sm">{errors.general}</p>
             </div>
           )}
-          
-          <Button 
-            onClick={handleTopUp} 
+
+          <Button
+            onClick={handleTopUp}
             disabled={isLoading}
-            fullWidth 
-            size="lg" 
-            className="bg-green-600 hover:bg-green-700 text-white py-4 text-lg font-semibold rounded-xl"
+            fullWidth
+            size="lg"
+            className="bg-green-600 hover:bg-green-700 text-white py-4 text-lg font-semibold rounded-xl disabled:bg-gray-400"
           >
-            {isLoading ? "Processing..." : "Add Money"}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Processing...
+              </div>
+            ) : (
+              "Add Money"
+            )}
           </Button>
-          
+
+          {topUpStatus === "success" && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-green-700 text-sm">
+                Top-up initiated successfully! Check your M-Pesa for payment
+                prompt.
+              </p>
+            </div>
+          )}
+
           <div className="text-center">
-            <p className="text-gray-600 text-sm">You'll receive an M-Pesa prompt to complete payment</p>
+            <p className="text-gray-600 text-sm">
+              You'll receive an M-Pesa prompt to complete payment
+            </p>
           </div>
         </div>
       </main>

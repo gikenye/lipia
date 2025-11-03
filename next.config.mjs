@@ -5,7 +5,8 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    domains: ["www.paypalobjects.com"],
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

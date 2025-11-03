@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Send,
   ShoppingCart,
@@ -16,62 +17,114 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GoogleSignIn } from "@/components/google-signin";
 import { useWallet } from "@/lib/wallet-context";
-import { useWalletBalance } from "thirdweb/react";
-import { client } from "@/lib/thirdweb";
-import { arbitrum } from "thirdweb/chains";
 
 // Force dynamic rendering to avoid SSG issues
 export const dynamic = "force-dynamic";
 
 const PYUSD_ADDRESS = "0x46850aD61C2B7d64d08c9C754F45254596696984";
+const ARBITRUM_RPC = "https://arb1.arbitrum.io/rpc";
+
+// Simple balance fetching without external libraries
+async function fetchPYUSDBalance(address: string): Promise<string> {
+  try {
+    const response = await fetch(ARBITRUM_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "eth_call",
+        params: [
+          {
+            to: PYUSD_ADDRESS,
+            data: `0x70a08231000000000000000000000000${address.slice(2).padStart(40, "0")}`,
+          },
+          "latest",
+        ],
+        id: 1,
+      }),
+    });
+
+    const result = await response.json();
+    if (result.result) {
+      // Convert hex to decimal and adjust for 6 decimals (PYUSD has 6 decimals)
+      const balance = BigInt(result.result);
+      const balanceInUSD = Number(balance) / 1e6;
+      return balanceInUSD.toFixed(2);
+    }
+    return "0";
+  } catch (error) {
+    console.error("Failed to fetch PYUSD balance:", error);
+    return "0";
+  }
+}
 
 export default function Dashboard() {
   const { account } = useWallet();
+  const [pyusdAmount, setPyusdAmount] = useState(0);
+  const [pyusdLoading, setPyusdLoading] = useState(false);
 
-  // Only fetch balances if account is connected
-  const {
-    data: pyusdBalance,
-    isLoading: pyusdLoading,
-    error: pyusdError,
-  } = useWalletBalance({
-    chain: arbitrum,
-    address: account?.address,
-    client,
-    tokenAddress: PYUSD_ADDRESS,
-  });
+  // Fetch PYUSD balance when account changes
+  useEffect(() => {
+    if (account) {
+      setPyusdLoading(true);
+      fetchPYUSDBalance(account)
+        .then((balance) => {
+          setPyusdAmount(parseFloat(balance));
+        })
+        .finally(() => {
+          setPyusdLoading(false);
+        });
+    } else {
+      setPyusdAmount(0);
+    }
+  }, [account]);
 
-  const {
-    data: ethBalance,
-    isLoading: ethLoading,
-    error: ethError,
-  } = useWalletBalance({
-    chain: arbitrum,
-    address: account?.address,
-    client,
-  });
-
-  const [exchangeRate, setExchangeRate] = useState(0);
-  const pyusdAmount = parseFloat(pyusdBalance?.displayValue || "0");
+  const [exchangeRate, setExchangeRate] = useState(129.2); // Default KES rate
   const kesAmount = exchangeRate > 0 ? pyusdAmount * exchangeRate : 0;
 
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [currencyMode, setCurrencyMode] = useState<"KES" | "USD">("KES");
+  // Fetch exchange rate on component mount
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      try {
+        const response = await fetch("/api/v1/exchange-rate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currency_code: "KES" }),
+        });
+        const result = await response.json();
+        if (result.success && result.data?.data?.quoted_rate) {
+          setExchangeRate(result.data.data.quoted_rate);
+        }
+      } catch (error) {
+        console.error("Failed to fetch exchange rate:", error);
+      }
+    };
 
+    fetchExchangeRate();
+  }, []);
+
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [currencyMode, setCurrencyMode] = useState<"KES" | "USD">("KES");
+  const [showSignIn, setShowSignIn] = useState(false);
+
+  // Close sign-in modal when user successfully connects
+  useEffect(() => {
+    if (account && showSignIn) {
+      setShowSignIn(false);
+    }
+  }, [account, showSignIn]);
+
+  // Only show PYUSD balance
   const tokenBalances = [
     {
       symbol: "PYUSD",
       amount: pyusdAmount,
-      icon: "💵",
+      amountKes: kesAmount,
+      icon: "https://www.paypalobjects.com/devdoc/coin-PYUSD.svg",
       color: "bg-green-100",
       loading: pyusdLoading,
-    },
-    {
-      symbol: "ETH",
-      amount: parseFloat(ethBalance?.displayValue || "0"),
-      icon: "⚡",
-      color: "bg-blue-100",
-      loading: ethLoading,
     },
   ];
 
@@ -119,8 +172,22 @@ export default function Dashboard() {
               <User className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Welcome back</p>
-              <p className="font-semibold">Your Account</p>
+              {account ? (
+                <>
+                  <p className="text-sm text-gray-600">Welcome back</p>
+                  <p className="font-semibold">Your Account</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600">Not signed in</p>
+                  <button
+                    onClick={() => setShowSignIn(true)}
+                    className="font-semibold text-green-600 hover:text-green-700 transition-colors"
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
             </div>
           </div>
           <Link href="/settings">
@@ -143,9 +210,19 @@ export default function Dashboard() {
                       ? "0"
                       : pyusdLoading
                         ? "Loading..."
-                        : `Ksh${kesAmount.toFixed(0)}`}
+                        : currencyMode === "KES"
+                          ? `Ksh${kesAmount.toFixed(0)}`
+                          : `$${pyusdAmount.toFixed(2)}`}
                   </span>
                 </div>
+                {/* Show secondary amount */}
+                {account && !pyusdLoading && (
+                  <div className="text-white/70 text-sm mt-1">
+                    {currencyMode === "KES"
+                      ? `≈ $${pyusdAmount.toFixed(2)} PYUSD`
+                      : `≈ Ksh${kesAmount.toFixed(0)}`}
+                  </div>
+                )}
               </div>
 
               {/* Currency Toggle */}
@@ -188,36 +265,44 @@ export default function Dashboard() {
             {/* Token Balance Cards - Only show when expanded */}
             {isExpanded && (
               <div className="space-y-3 mb-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {tokenBalances.map((token, index) => (
-                    <div
-                      key={token.symbol}
-                      className="bg-white rounded-2xl p-4"
-                    >
-                      <div
-                        className={`w-8 h-8 ${token.color} rounded-full flex items-center justify-center mb-2`}
-                      >
-                        <span className="text-sm">{token.icon}</span>
-                      </div>
-                      <div className="text-gray-900">
-                        <p className="text-lg font-bold">
-                          {token.loading
-                            ? "..."
-                            : token.amount < 0.01
-                              ? "<0.01"
-                              : token.amount.toFixed(4)}
-                        </p>
-                        <p className="text-sm text-gray-500">{token.symbol}</p>
-                      </div>
-                    </div>
-                  ))}
+                {/* PYUSD Balance Card */}
+                <div className="bg-white rounded-2xl p-4 w-1/2">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                    <Image
+                      src="https://www.paypalobjects.com/devdoc/coin-PYUSD.svg"
+                      alt="PYUSD"
+                      width={24}
+                      height={24}
+                      className="object-contain"
+                    />
+                  </div>
+                  <div className="text-gray-900">
+                    <p className="text-lg font-bold">
+                      {pyusdLoading
+                        ? "..."
+                        : pyusdAmount < 0.01
+                          ? "<0.01"
+                          : pyusdAmount.toFixed(4)}
+                    </p>
+                    <p className="text-sm text-gray-500">PYUSD</p>
+                  </div>
+                  {!pyusdLoading && exchangeRate > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      ≈ Ksh{kesAmount.toFixed(2)}
+                    </p>
+                  )}
                 </div>
+
+                {/* Exchange Rate Info */}
+                {exchangeRate > 0 && (
+                  <p className="text-center text-white/60 text-xs">
+                    1 PYUSD = KES {exchangeRate.toFixed(2)}
+                  </p>
+                )}
 
                 {/* Disclaimer */}
                 <p className="text-center text-white/70 text-sm mt-4">
-                  {account
-                    ? "Live blockchain data"
-                    : "Connect wallet to see balances"}
+                  {account ? "Live blockchain data" : "Sign in to see balances"}
                 </p>
               </div>
             )}
@@ -283,7 +368,7 @@ export default function Dashboard() {
               </>
             ) : (
               <>
-                <p className="text-sm">Connect your wallet</p>
+                <p className="text-sm">Sign in to continue</p>
                 <p className="text-xs mt-1">
                   Sign in to see your transaction history
                 </p>
@@ -292,6 +377,32 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Sign In Modal */}
+      {showSignIn && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Sign in to continue</h3>
+              <button
+                onClick={() => setShowSignIn(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Sign in to access your wallet and start sending money to Kenya
+              </p>
+              <GoogleSignIn />
+            </div>
+            <p className="text-xs text-gray-500 text-center">
+              By continuing, you agree to our Terms of Service
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
